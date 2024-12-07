@@ -169,7 +169,7 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 	normalPresents := make([]*PresentAllMaster, 0)
 	query := "SELECT * FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?"
 	if err := tx.Select(&normalPresents, query, requestAt, requestAt); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to select present_all_masters: %w", err)
 	}
 
 	normalPresentIDs := make([]int64, 0, len(normalPresents))
@@ -182,9 +182,9 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 	if err != nil {
 		return nil, err
 	}
-	err = tx.Select(receivedIDs, query, params...)
+	err = tx.Select(&receivedIDs, query, params...)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+		return nil, fmt.Errorf("failed to select user_present_all_received_history: %w", err)
 	}
 
 	notReceivedNormalPresents := make([]*PresentAllMaster, 0, len(normalPresents))
@@ -230,12 +230,12 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 
 	query = "INSERT INTO user_presents(user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (:user_id, :sent_at, :item_type, :item_id, :amount, :present_message, :created_at, :updated_at)"
 	if _, err := tx.Exec(query, obtainPresents); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert user_presents: %w", err)
 	}
 
 	query = "INSERT INTO user_present_all_received_history(user_id, present_all_id, received_at, created_at, updated_at) VALUES (:user_id, :present_all_id, :received_at, :created_at, :updated_at)"
 	if _, err = tx.Exec(query, histories); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert user_present_all_received_history: %w", err)
 	}
 
 	return obtainPresents, nil

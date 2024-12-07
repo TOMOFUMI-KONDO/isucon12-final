@@ -311,10 +311,10 @@ func (h *Handler) loginProcess(tx *sqlx.Tx, userID int64, requestAt int64) (*Use
 		return nil, nil, nil, err
 	}
 
-	// 全員プレゼント取得
+	// 全プレゼント取得
 	allPresents, err := h.obtainPresent(tx, userID, requestAt)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("failed to obtain present: %w", err)
 	}
 
 	if err = tx.Get(&user.IsuCoin, "SELECT isu_coin FROM users WHERE id=?", user.ID); err != nil {
