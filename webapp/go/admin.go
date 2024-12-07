@@ -92,16 +92,11 @@ func (h *Handler) adminLogin(c echo.Context) error {
 		return errorResponse(c, http.StatusInternalServerError, err)
 	}
 
-	sID, err := h.generateID()
-	if err != nil {
-		return errorResponse(c, http.StatusInternalServerError, err)
-	}
 	sessID, err := generateUUID()
 	if err != nil {
 		return errorResponse(c, http.StatusInternalServerError, err)
 	}
 	sess := &Session{
-		ID:        sID,
 		UserID:    req.UserID,
 		SessionID: sessID,
 		CreatedAt: requestAt,
@@ -109,10 +104,17 @@ func (h *Handler) adminLogin(c echo.Context) error {
 		ExpiredAt: requestAt + 86400,
 	}
 
-	query = "INSERT INTO admin_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)"
-	if _, err = tx.Exec(query, sess.ID, sess.UserID, sess.SessionID, sess.CreatedAt, sess.UpdatedAt, sess.ExpiredAt); err != nil {
+	query = "INSERT INTO admin_sessions(user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?)"
+	result, err := tx.Exec(query, sess.UserID, sess.SessionID, sess.CreatedAt, sess.UpdatedAt, sess.ExpiredAt)
+	if err != nil {
 		return errorResponse(c, http.StatusInternalServerError, err)
 	}
+
+	sID, err := result.LastInsertId()
+	if err != nil {
+		return errorResponse(c, http.StatusInternalServerError, err)
+	}
+	sess.ID = sID
 
 	err = tx.Commit()
 	if err != nil {
@@ -622,12 +624,8 @@ func (h *Handler) adminBanUser(c echo.Context) error {
 		return errorResponse(c, http.StatusInternalServerError, err)
 	}
 
-	banID, err := h.generateID()
-	if err != nil {
-		return errorResponse(c, http.StatusInternalServerError, err)
-	}
-	query = "INSERT user_bans(id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE updated_at = ?"
-	if _, err = h.DB.Exec(query, banID, userID, requestAt, requestAt, requestAt); err != nil {
+	query = "INSERT user_bans(user_id, created_at, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE updated_at = ?"
+	if _, err = h.DB.Exec(query, userID, requestAt, requestAt, requestAt); err != nil {
 		return errorResponse(c, http.StatusInternalServerError, err)
 	}
 
@@ -641,6 +639,7 @@ type AdminBanUserResponse struct {
 }
 
 // hashPassword パスワードをハッシュ化する
+//
 //nolint:deadcode,unused
 func hashPassword(pw string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
