@@ -1,3 +1,0 @@
-package IsuConquest;
-
-1;
