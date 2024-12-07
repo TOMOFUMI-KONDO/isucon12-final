@@ -73,12 +73,12 @@
     cmd: bash setup.sh
     chdir: /home/isucon/webapp/sql/setup
 
-- name: Build rust application
-  become: true
-  become_user: isucon
-  shell:
-    cmd: /home/isucon/.x cargo build --locked --release
-    chdir: /home/isucon/webapp/rust
+# - name: Build rust application
+#   become: true
+#   become_user: isucon
+#   shell:
+#     cmd: /home/isucon/.x cargo build --locked --release
+#     chdir: /home/isucon/webapp/rust
 
 - name: Build go application
   become: true
@@ -87,58 +87,58 @@
     cmd: /home/isucon/.x go build -o isuconquest .
     chdir: /home/isucon/webapp/go
 
-- name: Clone ext-apfd
-  become: true
-  become_user: isucon
-  git:
-    repo: https://github.com/m6w6/ext-apfd.git
-    dest: /tmp/ext-apfd
-    clone: true
-    force: true
-    depth: 1
+# - name: Clone ext-apfd
+#   become: true
+#   become_user: isucon
+#   git:
+#     repo: https://github.com/m6w6/ext-apfd.git
+#     dest: /tmp/ext-apfd
+#     clone: true
+#     force: true
+#     depth: 1
 
-- name: ext-apfd build
-  become: true
-  become_user: isucon
-  shell: |
-    cd /tmp/ext-apfd && /home/isucon/.x phpize && \
-    /home/isucon/.x ./configure --with-php-config=/home/isucon/local/php/bin/php-config && \
-    make && make install && echo "extension=apfd.so" >> /home/isucon/local/php/etc/php.ini
+# - name: ext-apfd build
+#   become: true
+#   become_user: isucon
+#   shell: |
+#     cd /tmp/ext-apfd && /home/isucon/.x phpize && \
+#     /home/isucon/.x ./configure --with-php-config=/home/isucon/local/php/bin/php-config && \
+#     make && make install && echo "extension=apfd.so" >> /home/isucon/local/php/etc/php.ini
 
-- name: composer install for php application
-  become: true
-  become_user: isucon
-  shell:
-    cmd: /home/isucon/.x php composer.phar install
-    chdir: /home/isucon/webapp/php
+# - name: composer install for php application
+#   become: true
+#   become_user: isucon
+#   shell:
+#     cmd: /home/isucon/.x php composer.phar install
+#     chdir: /home/isucon/webapp/php
 
-- name: npm install for node application
-  become: true
-  become_user: isucon
-  shell:
-    cmd: /home/isucon/.x npm install
-    chdir: /home/isucon/webapp/node
+# - name: npm install for node application
+#   become: true
+#   become_user: isucon
+#   shell:
+#     cmd: /home/isucon/.x npm install
+#     chdir: /home/isucon/webapp/node
 
-- name: Change /home/isucon/local/perl/bin/cpm permission
-  become: true
-  become_user: isucon
-  file:
-    path: /home/isucon/local/perl/bin/cpm
-    mode: 0755
+# - name: Change /home/isucon/local/perl/bin/cpm permission
+#   become: true
+#   become_user: isucon
+#   file:
+#     path: /home/isucon/local/perl/bin/cpm
+#     mode: 0755
 
-- name: cpm install for perl application
-  become: true
-  become_user: isucon
-  shell:
-    cmd: /home/isucon/.x cpm install
-    chdir: /home/isucon/webapp/perl
+# - name: cpm install for perl application
+#   become: true
+#   become_user: isucon
+#   shell:
+#     cmd: /home/isucon/.x cpm install
+#     chdir: /home/isucon/webapp/perl
 
-- name: bundle install for ruby application
-  become: true
-  become_user: isucon
-  shell:
-    cmd: export BUNDLE_DEPLOYMENT=1 && /home/isucon/.x bundle install
-    chdir: /home/isucon/webapp/ruby
+# - name: bundle install for ruby application
+#   become: true
+#   become_user: isucon
+#   shell:
+#     cmd: export BUNDLE_DEPLOYMENT=1 && /home/isucon/.x bundle install
+#     chdir: /home/isucon/webapp/ruby
 
 - name: Enable isuconquest.go.service
   become: true
