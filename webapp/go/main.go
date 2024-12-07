@@ -1166,7 +1166,7 @@ func (h *Handler) receivePresent(c echo.Context) error {
 	for _, v := range obtainPresent {
 		userPresentIDs = append(userPresentIDs, v.ID)
 	}
-	query, params, err = sqlx.In("UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id=(?)", requestAt, requestAt, userPresentIDs)
+	query, params, err = sqlx.In("UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id IN (?)", requestAt, requestAt, userPresentIDs)
 	if err != nil {
 		return errorResponse(c, http.StatusInternalServerError, err)
 	}
