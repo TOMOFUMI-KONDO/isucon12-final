@@ -229,12 +229,12 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 	}
 
 	query = "INSERT INTO user_presents(user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (:user_id, :sent_at, :item_type, :item_id, :amount, :present_message, :created_at, :updated_at)"
-	if _, err := tx.Exec(query, obtainPresents); err != nil {
+	if _, err := tx.NamedExec(query, obtainPresents); err != nil {
 		return nil, fmt.Errorf("failed to insert user_presents: %w", err)
 	}
 
 	query = "INSERT INTO user_present_all_received_history(user_id, present_all_id, received_at, created_at, updated_at) VALUES (:user_id, :present_all_id, :received_at, :created_at, :updated_at)"
-	if _, err = tx.Exec(query, histories); err != nil {
+	if _, err = tx.NamedExec(query, histories); err != nil {
 		return nil, fmt.Errorf("failed to insert user_present_all_received_history: %w", err)
 	}
 
