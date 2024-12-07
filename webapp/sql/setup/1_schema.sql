@@ -162,7 +162,8 @@ CREATE TABLE `user_presents` (
   `updated_at` bigint NOT NULL,
   `deleted_at` bigint default NULL,
   PRIMARY KEY (`id`),
-  INDEX userid_idx (`user_id`)
+  INDEX userid_idx (`user_id`),
+  KEY `user_id_deleted_at_idx` (`user_id`, `deleted_at`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin;
 
 /* ガチャマスタ */
