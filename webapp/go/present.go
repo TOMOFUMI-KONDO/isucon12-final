@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -161,4 +162,79 @@ type ReceivePresentRequest struct {
 
 type ReceivePresentResponse struct {
 	UpdatedResources *UpdatedResource `json:"updatedResources"`
+}
+
+// obtainPresent プレゼント付与
+func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*UserPresent, error) {
+	normalPresents := make([]*PresentAllMaster, 0)
+	query := "SELECT * FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?"
+	if err := tx.Select(&normalPresents, query, requestAt, requestAt); err != nil {
+		return nil, err
+	}
+
+	obtainPresents := make([]*UserPresent, 0)
+	for _, np := range normalPresents {
+		received := new(UserPresentAllReceivedHistory)
+		query = "SELECT * FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?"
+		err := tx.Get(received, query, userID, np.ID)
+		if err == nil {
+			// プレゼント配布済
+			continue
+		}
+		if err != sql.ErrNoRows {
+			return nil, err
+		}
+
+		up := &UserPresent{
+			UserID:         userID,
+			SentAt:         requestAt,
+			ItemType:       np.ItemType,
+			ItemID:         np.ItemID,
+			Amount:         int(np.Amount),
+			PresentMessage: np.PresentMessage,
+			CreatedAt:      requestAt,
+			UpdatedAt:      requestAt,
+		}
+		query = "INSERT INTO user_presents(user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+		result, err := tx.Exec(query, up.UserID, up.SentAt, up.ItemType, up.ItemID, up.Amount, up.PresentMessage, up.CreatedAt, up.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		pID, err := result.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
+		up.ID = pID
+
+		history := &UserPresentAllReceivedHistory{
+			UserID:       userID,
+			PresentAllID: np.ID,
+			ReceivedAt:   requestAt,
+			CreatedAt:    requestAt,
+			UpdatedAt:    requestAt,
+		}
+		query = "INSERT INTO user_present_all_received_history(user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+		result, err = tx.Exec(
+			query,
+			history.UserID,
+			history.PresentAllID,
+			history.ReceivedAt,
+			history.CreatedAt,
+			history.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		phID, err := result.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
+		history.ID = phID
+
+		obtainPresents = append(obtainPresents, up)
+	}
+
+	return obtainPresents, nil
 }
