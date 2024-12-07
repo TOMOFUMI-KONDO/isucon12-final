@@ -172,19 +172,40 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 		return nil, err
 	}
 
-	obtainPresents := make([]*UserPresent, 0)
+	normalPresentIDs := make([]int64, 0, len(normalPresents))
 	for _, np := range normalPresents {
-		received := new(UserPresentAllReceivedHistory)
-		query = "SELECT * FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?"
-		err := tx.Get(received, query, userID, np.ID)
-		if err == nil {
-			// プレゼント配布済
-			continue
-		}
-		if err != sql.ErrNoRows {
-			return nil, err
+		normalPresentIDs = append(normalPresentIDs, np.ID)
+	}
+
+	receivedIDs := make([]int64, 0, len(normalPresents))
+	query, params, err := sqlx.In("SELECT present_all_id FROM user_present_all_received_history WHERE user_id=? AND present_all_id IN (?)", userID, normalPresentIDs)
+	if err != nil {
+		return nil, err
+	}
+	err = tx.Select(receivedIDs, query, params...)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	notReceivedNormalPresents := make([]*PresentAllMaster, 0, len(normalPresents))
+	if err == sql.ErrNoRows {
+		notReceivedNormalPresents = normalPresents
+	} else {
+		receivedMap := make(map[int64]struct{}, len(receivedIDs))
+		for _, r := range receivedIDs {
+			receivedMap[r] = struct{}{}
 		}
 
+		for _, np := range normalPresents {
+			if _, ok := receivedMap[np.ID]; !ok {
+				notReceivedNormalPresents = append(notReceivedNormalPresents, np)
+			}
+		}
+	}
+
+	obtainPresents := make([]*UserPresent, 0, len(notReceivedNormalPresents))
+	histories := make([]*UserPresentAllReceivedHistory, 0, len(notReceivedNormalPresents))
+	for _, np := range notReceivedNormalPresents {
 		up := &UserPresent{
 			UserID:         userID,
 			SentAt:         requestAt,
@@ -195,17 +216,7 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 			CreatedAt:      requestAt,
 			UpdatedAt:      requestAt,
 		}
-		query = "INSERT INTO user_presents(user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-		result, err := tx.Exec(query, up.UserID, up.SentAt, up.ItemType, up.ItemID, up.Amount, up.PresentMessage, up.CreatedAt, up.UpdatedAt)
-		if err != nil {
-			return nil, err
-		}
-
-		pID, err := result.LastInsertId()
-		if err != nil {
-			return nil, err
-		}
-		up.ID = pID
+		obtainPresents = append(obtainPresents, up)
 
 		history := &UserPresentAllReceivedHistory{
 			UserID:       userID,
@@ -214,26 +225,17 @@ func (h *Handler) obtainPresent(tx *sqlx.Tx, userID int64, requestAt int64) ([]*
 			CreatedAt:    requestAt,
 			UpdatedAt:    requestAt,
 		}
-		query = "INSERT INTO user_present_all_received_history(user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-		result, err = tx.Exec(
-			query,
-			history.UserID,
-			history.PresentAllID,
-			history.ReceivedAt,
-			history.CreatedAt,
-			history.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
+		histories = append(histories, history)
+	}
 
-		phID, err := result.LastInsertId()
-		if err != nil {
-			return nil, err
-		}
-		history.ID = phID
+	query = "INSERT INTO user_presents(user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (:user_id, :sent_at, :item_type, :item_id, :amount, :present_message, :created_at, :updated_at)"
+	if _, err := tx.Exec(query, obtainPresents); err != nil {
+		return nil, err
+	}
 
-		obtainPresents = append(obtainPresents, up)
+	query = "INSERT INTO user_present_all_received_history(user_id, present_all_id, received_at, created_at, updated_at) VALUES (:user_id, :present_all_id, :received_at, :created_at, :updated_at)"
+	if _, err = tx.Exec(query, histories); err != nil {
+		return nil, err
 	}
 
 	return obtainPresents, nil
