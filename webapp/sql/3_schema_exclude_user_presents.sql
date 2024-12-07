@@ -244,7 +244,8 @@ CREATE TABLE `user_one_time_tokens` (
   `expired_at` bigint NOT NULL,
   `deleted_at` bigint default NULL,
   PRIMARY KEY (`id`),
-  UNIQUE uniq_token (`user_id`, `token`, `deleted_at`)
+  UNIQUE uniq_token (`user_id`, `token`, `deleted_at`),
+  KEY `token_idx` (`token`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin;
 
 /* 管理者権限のセッション管理 */
